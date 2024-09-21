@@ -18,6 +18,7 @@
   },
   "homepage": " https://github.com/Keerthanbingi/personal-budget.git",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.0"
   }
 }
