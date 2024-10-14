@@ -1,28 +1,20 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
+// Define the budget schema
 const budgetSchema = new mongoose.Schema({
-    title:{
-        type:String,
-        trim:true,
-        required:true,
-    },
-    budget:{
-        type:Number,
-        required:true
-    },
-    color:{
-        type:"String",
+    title: { type: String, required: true },
+    budget: { type: Number, required: true },
+    color: {
+        type: String,
+        required: true,
         validate: {
-            validator: function(value) {
-              // Using a regular expression to check if the value is a valid hexadecimal color code
-              return /^#([A-Fa-f0-9]{6})$/.test(value);
+            validator: function(v) {
+                return /^#[0-9A-Fa-f]{6}$/.test(v);  // Hexadecimal color validation
             },
-            message: 'Color code must be a valid hexadecimal color code (e.g., "#ED4523").'
-        },
-        required:true,
-        trim:true,
-        uppercase:true
+            message: props => `${props.value} is not a valid hexadecimal color!`
+        }
     }
-},{collection:'budget'})
+});
 
-module.exports = mongoose.model('budget',budgetSchema)
+// Create and export the model based on the schema
+module.exports = mongoose.model('Budget', budgetSchema);

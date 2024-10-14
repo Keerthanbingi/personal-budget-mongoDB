@@ -1,56 +1,83 @@
-// Budget API
+const express = require('express');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+const app = express();
+const Budget = require('./models/Budget_schema'); // Import the Budget model
+const port = 3000;
 
-const express = require('express'); // Import express
-const cors = require('cors'); // Import cors
-const mongoose = require('mongoose'); // Import mongoose
-const bodyParser = require('body-parser'); // Import body-parser
-const Budget = require('./models/budget_schema'); // Import the Budget model
+// Middleware to parse JSON data
+app.use(express.json());
 
-const app = express(); // Create an instance of express
-const port = 3000; // Define the port number
-
-app.use(cors()); // Use cors for cross-origin requests
-app.use(bodyParser.json()); // Middleware for parsing JSON bodies
-
-// MongoDB connection
-mongoose.connect('mongodb://localhost:27017/personalBudget', {});
-
-// Check MongoDB connection
-mongoose.connection.once('open', () => {
-    console.log('Connected to MongoDB');
-}).on('error', (error) => {
-    console.error('MongoDB connection error:', error);
+// Load budget-data.json on server startup
+let staticBudgetData = [];
+const jsonDataPath = path.join(__dirname, 'budget-data.json');
+fs.readFile(jsonDataPath, 'utf8', (err, data) => {
+    if (err) {
+        console.error('Error reading budget-data.json:', err);
+    } else {
+        staticBudgetData = JSON.parse(data).myBudget; // Parse the myBudget array from JSON
+        console.log('Loaded static budget data from JSON file');
+    }
 });
 
-// GET endpoint to fetch data from the database
-app.get('/api/budget', async (req, res) => {
+// Connect to MongoDB using Mongoose
+mongoose.connect('mongodb://localhost:27017/budgetApp', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Could not connect to MongoDB...', err));
+
+// Default route to serve static files
+app.use('/', express.static('public'));
+
+// Endpoint to fetch all budget data (from MongoDB and JSON)
+app.get('/budget', async (req, res) => {
     try {
-        const budgets = await Budget.find({});
-        res.json(budgets);
+        const dbBudgets = await Budget.find();  // Fetch all budget entries from MongoDB
+
+        // Format the MongoDB data to match the format from the JSON file
+        const formattedDbBudgets = dbBudgets.map(budget => ({
+            title: budget.title,
+            budget: budget.budget,
+            color: budget.color
+        }));
+
+        // Combine the static JSON data with the MongoDB data
+        const combinedBudgets = [...formattedDbBudgets, ...staticBudgetData];
+
+        res.json(combinedBudgets);  // Send the combined data to the frontend
     } catch (err) {
-        res.status(500).send(err);
+        res.status(500).send('Error fetching budget data');
     }
 });
 
-// POST endpoint to add new data to the database
-app.post('/api/budget', async (req, res) => {
-    const { title, relatedValue, color } = req.body;
+// Endpoint to add new budget data to MongoDB
+app.post('/budget', async (req, res) => {
+    const { title, budget, color } = req.body;
 
-    // Validate all fields
-    if (!title || !relatedValue || !color) {
-        return res.status(400).send('All fields (title, relatedValue, color) are required.');
+    // Validate that the required fields are provided
+    if (!title || !budget || !color) {
+        return res.status(400).send('All fields (title, budget, color) are required');
     }
+
+    // Create a new budget document
+    const newBudget = new Budget({
+        title,
+        budget,
+        color
+    });
 
     try {
-        const newBudget = new Budget({ title, relatedValue, color });
-        await newBudget.save();
-        res.status(201).send(newBudget);
+        const savedBudget = await newBudget.save();  // Save the new entry to MongoDB
+        res.json(savedBudget);  // Respond with the newly created document
     } catch (err) {
-        res.status(500).send(err);
+        res.status(400).send(err.message);  // Handle validation errors
     }
 });
 
-// Start server
+// Start the server
 app.listen(port, () => {
-    console.log(`API served at http://localhost:${port}`);
+    console.log(`Example app listening at http://localhost:${port}`);
 });
