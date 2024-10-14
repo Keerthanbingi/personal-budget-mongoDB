@@ -205,21 +205,26 @@
         }
 
         function getBudget(){
-            axios.get('http://localhost:3000/budget')
+            axios.get('http://localhost:3000/api/budget')  // Use the new endpoint
             .then(function (res) {
-                // console.log(res.data);
-                for(var i = 0; i < res.data.myBudget.length; i++){
-                    dataSource.datasets[0].data[i] = res.data.myBudget[i].budget;
-                    dataSource.labels[i] = res.data.myBudget[i].title;
+                console.log(res.data); // Log the fetched data
+                for(var i = 0; i < res.data.length; i++){  // Adjusted to work with the array
+                    dataSource.datasets[0].data[i] = res.data[i].relatedValue; // Using relatedValue
+                    dataSource.labels[i] = res.data[i].title;
                     dataSource.myBudget.push({
-                        "title": res.data.myBudget[i].title,
-                        "budget": res.data.myBudget[i].budget
-                    })
+                        "title": res.data[i].title,
+                        "budget": res.data[i].relatedValue  // Using relatedValue
+                    });
                 }
-                createChart();
-                populateD3jsChart();
-            })
-        }
+        createChart();
+        populateD3jsChart();
+    })
+    .catch(function (error) {
+        console.error('Error fetching budget data:', error);
+    });
+}
+
+
 
         getBudget();
     </script>
